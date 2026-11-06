@@ -18,7 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_def.h"
+#include "stm32g4xx_hal_gpio.h"
 #include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
@@ -61,6 +63,13 @@ volatile HAL_StatusTypeDef imu3_spi_status = HAL_ERROR;
 volatile uint8_t imu1_ctrl1 = 0;
 volatile HAL_StatusTypeDef imu1_write_status = HAL_ERROR;
 volatile HAL_StatusTypeDef imu1_read_status = HAL_ERROR;
+
+volatile int16_t imu1_ax = 0;
+volatile int16_t imu1_ay = 0;
+volatile int16_t imu1_az = 0;
+
+volatile HAL_StatusTypeDef imu1_accel_config_status = HAL_ERROR;
+volatile HAL_StatusTypeDef imu1_accel_status = HAL_ERROR;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -154,7 +163,7 @@ int main(void)
   imu1_write_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
   HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
 
-  // CTRL1を読み返す    0x10 | 0x80 = 0x90 0x00は返答を受け取るためのダミー 0x90は最上位bitが1なので読み取り命令
+  // CTRL1を読み返す    0x10 | 0x80 = 0x90 0x00は返答を受け取るためのダミー 0x90は最上位bitが1なので読み取り命令 0x10を読み取る
   tx[0] = 0x10 | 0x80;
   tx[1] = 0x00;
 
@@ -166,6 +175,18 @@ int main(void)
     imu1_ctrl1 = rx[1];
   }
 
+  tx[0] = 0x12;
+  tx[1] = 0x44;  //BDUとIF_INCを有効にする設定
+
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+  imu1_accel_config_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+
+  if (imu1_accel_config_status != HAL_OK) {
+    Error_Handler();
+  }
+
+  HAL_Delay(100);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -175,6 +196,19 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    uint8_t accel_tx[7] = {0x28 | 0x80, 0, 0,0,0,0,0};  // 0x28は、加速度データが入っている最初のレジスタのアドレス 0x29とついていく
+    uint8_t accel_rx[7] = {0};
+    HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+    imu1_accel_status = HAL_SPI_TransmitReceive(&hspi2, accel_tx, accel_rx, 7, 100);
+    HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+
+    if (imu1_accel_status == HAL_OK) {  // accel_rx[0]	命令送信中の受信値
+      imu1_ax = (int16_t)(((uint16_t)accel_rx[2] << 8) | accel_rx[1]);
+      imu1_ay = (int16_t)(((uint16_t)accel_rx[4] << 8) | accel_rx[3]);
+      imu1_az = (int16_t)(((uint16_t)accel_rx[6] << 8) | accel_rx[5]);
+    }
+
+    HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
