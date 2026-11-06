@@ -22,9 +22,9 @@ set(CMAKE_C_SIMULATE_VERSION "")
 
 
 
-set(CMAKE_AR "C:/msys64/ucrt64/bin/ar.exe")
+set(CMAKE_AR "C:/Users/kawam/AppData/Local/stm32cube/bundles/gnu-tools-for-stm32/13.3.1+st.9/bin/arm-none-eabi-ar.exe")
 set(CMAKE_C_COMPILER_AR "C:/Users/kawam/AppData/Local/stm32cube/bundles/gnu-tools-for-stm32/13.3.1+st.9/bin/arm-none-eabi-gcc-ar.exe")
-set(CMAKE_RANLIB "C:/msys64/ucrt64/bin/ranlib.exe")
+set(CMAKE_RANLIB "C:/Users/kawam/AppData/Local/stm32cube/bundles/gnu-tools-for-stm32/13.3.1+st.9/bin/arm-none-eabi-ranlib.exe")
 set(CMAKE_C_COMPILER_RANLIB "C:/Users/kawam/AppData/Local/stm32cube/bundles/gnu-tools-for-stm32/13.3.1+st.9/bin/arm-none-eabi-gcc-ranlib.exe")
 set(CMAKE_LINKER "C:/Users/kawam/AppData/Local/stm32cube/bundles/gnu-tools-for-stm32/13.3.1+st.9/bin/arm-none-eabi-g++.exe")
 set(CMAKE_LINKER_LINK "")

@@ -48,7 +48,7 @@ TIM_HandleTypeDef htim8;
 
 /* USER CODE BEGIN PV */
 volatile uint8_t imu1_id = 0;                   // センサーから返ってきた識別値を保存する変数
-volatile uint8_t imu1_spi_status = HAL_ERROR;   // SPIの送受信処理が正常に終わったか保存
+volatile HAL_StatusTypeDef imu1_spi_status = HAL_ERROR;   // SPIの送受信処理が正常に終わったか保存
 
 /* USER CODE END PV */
 
@@ -102,6 +102,22 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM8_Init();
   /* USER CODE BEGIN 2 */
+
+  HAL_Delay(100);                                                   // 起動順位
+
+  uint8_t tx[2] = {0x0F | 0x80, 0x00};                              // 送信する2バイト 0x80で読み取りの意味 0x0Fを読み取る 0x0Fは、センサーの識別値が入った`WHO_AM_I`レジスタのアドレス ,は配列の値区切り
+  uint8_t rx[2] = {0};                                              // 受信する2バイト
+
+
+  /*IMU1_CS_GPIO_Port	GPIOB	Bポート IMU1_CS_Pin	GPIO_PIN_12	12番ピン*/
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);// IMU1を選択する 
+  imu1_spi_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);// SPI2で2バイトを送信し、同時に2バイトを受信する &hspi2はspi2を意味している(どのspiか, 送信, 受信, 8bit設定より2バイト, 完了を待つ時間ms)
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);  // IMU1との通信を終了する
+
+  // 通信処理が正常に終わった場合、識別値を保存する 
+  if (imu1_spi_status == HAL_OK){
+  imu1_id = rx[1];
+  }
 
   /* USER CODE END 2 */
 
