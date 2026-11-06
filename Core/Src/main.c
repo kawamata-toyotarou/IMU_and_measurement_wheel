@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32g4xx_hal_def.h"
+#include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -56,6 +57,10 @@ volatile HAL_StatusTypeDef imu2_spi_status = HAL_ERROR;
 
 volatile uint8_t imu3_id = 0;
 volatile HAL_StatusTypeDef imu3_spi_status = HAL_ERROR;
+
+volatile uint8_t imu1_ctrl1 = 0;
+volatile HAL_StatusTypeDef imu1_write_status = HAL_ERROR;
+volatile HAL_StatusTypeDef imu1_read_status = HAL_ERROR;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -132,13 +137,33 @@ int main(void)
   if (imu2_spi_status == HAL_OK){
     imu2_id = rx[1];
   }
-  
+
   HAL_GPIO_WritePin(IMU3_CS_GPIO_Port, IMU3_CS_Pin, GPIO_PIN_RESET); 
   imu3_spi_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
   HAL_GPIO_WritePin(IMU3_CS_GPIO_Port, IMU3_CS_Pin, GPIO_PIN_SET);
 
   if (imu3_spi_status == HAL_OK){
     imu3_id = rx[1];
+  }
+
+  // CTRLへ設定を書き込む 0x06を書き込む 最上位bitが0なので0x10は書き込み命令で0x10レジスタに書き込む
+  tx[0] = 0x10;
+  tx[1] = 0x06;
+
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+  imu1_write_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+
+  // CTRL1を読み返す    0x10 | 0x80 = 0x90 0x00は返答を受け取るためのダミー 0x90は最上位bitが1なので読み取り命令
+  tx[0] = 0x10 | 0x80;
+  tx[1] = 0x00;
+
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+  imu1_read_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+
+  if (imu1_read_status == HAL_OK){
+    imu1_ctrl1 = rx[1];
   }
 
   /* USER CODE END 2 */
