@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/kawam/IMU_and_measurement_wheel/build/Debug/cmake_install.cmake",
+		"C:/Users/kawam/IMU_and_measurement_wheel/build/Debug/cmake/stm32cubemx/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
