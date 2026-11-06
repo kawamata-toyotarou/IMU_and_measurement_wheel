@@ -24,3 +24,5 @@
 5152	9258	8156722930253136	cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_tim_ex.c.obj	f82faf8ca69afd14
 5028	9353	8156722928607918	cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_tim.c.obj	a832b93081090f6f
 9353	9964	8156722971755097	IMU_and_measurement_wheel.elf	de7d08df3ce31469
+19	1767	8156737844163658	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/main.c.obj	e8c9776443afc118
+1793	2422	8156737861860347	IMU_and_measurement_wheel.elf	de7d08df3ce31469

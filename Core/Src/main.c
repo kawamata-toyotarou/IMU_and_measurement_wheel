@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32g4xx_hal_def.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -47,9 +48,14 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim8;
 
 /* USER CODE BEGIN PV */
-volatile uint8_t imu1_id = 0;                   // センサーから返ってきた識別値を保存する変数
+volatile uint8_t imu1_id = 0;                             // センサーから返ってきた識別値を保存する変数
 volatile HAL_StatusTypeDef imu1_spi_status = HAL_ERROR;   // SPIの送受信処理が正常に終わったか保存
 
+volatile uint8_t imu2_id = 0;                             
+volatile HAL_StatusTypeDef imu2_spi_status = HAL_ERROR;
+
+volatile uint8_t imu3_id = 0;
+volatile HAL_StatusTypeDef imu3_spi_status = HAL_ERROR;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -116,7 +122,23 @@ int main(void)
 
   // 通信処理が正常に終わった場合、識別値を保存する 
   if (imu1_spi_status == HAL_OK){
-  imu1_id = rx[1];
+    imu1_id = rx[1];
+  }
+
+  HAL_GPIO_WritePin(IMU2_CS_GPIO_Port, IMU2_CS_Pin, GPIO_PIN_RESET); 
+  imu2_spi_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  HAL_GPIO_WritePin(IMU2_CS_GPIO_Port, IMU2_CS_Pin, GPIO_PIN_SET); 
+
+  if (imu2_spi_status == HAL_OK){
+    imu2_id = rx[1];
+  }
+  
+  HAL_GPIO_WritePin(IMU3_CS_GPIO_Port, IMU3_CS_Pin, GPIO_PIN_RESET); 
+  imu3_spi_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  HAL_GPIO_WritePin(IMU3_CS_GPIO_Port, IMU3_CS_Pin, GPIO_PIN_SET);
+
+  if (imu3_spi_status == HAL_OK){
+    imu3_id = rx[1];
   }
 
   /* USER CODE END 2 */
