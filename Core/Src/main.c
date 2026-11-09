@@ -18,10 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32g474xx.h"
-#include "stm32g4xx_hal_def.h"
-#include "stm32g4xx_hal_gpio.h"
-#include "stm32g4xx_hal_tim.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -46,6 +42,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi2;
+DMA_HandleTypeDef hdma_spi2_rx;
+DMA_HandleTypeDef hdma_spi2_tx;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
@@ -71,6 +69,9 @@ volatile HAL_StatusTypeDef imu1_read_status = HAL_ERROR;
 volatile HAL_StatusTypeDef imu1_accel_config_status = HAL_ERROR;
 volatile HAL_StatusTypeDef imu1_accel_status = HAL_ERROR;
 
+uint8_t motion_tx[15] = {0x20 | 0x80};  //0x20は温度、0x22はジャイロセンサー、0x28は、加速度データが入っている最初のレジスタのアドレス 0x29とついていく
+uint8_t motion_rx[15] = {0};
+
 volatile uint32_t imu_tick = 0;
 
 volatile int16_t temperture = 0;
@@ -82,11 +83,16 @@ volatile int16_t  imu1_az = 0;
 volatile int16_t imu1_gx = 0;
 volatile int16_t imu1_gy = 0;
 volatile int16_t imu1_gz = 0;
+
+static volatile uint8_t imu1_dma_busy = 0;
+volatile uint32_t imu1_sample_count = 0;
+volatile uint32_t imu1_dma_errors = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
@@ -95,6 +101,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 int _write(int file, char *ptr, int len);
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -109,7 +116,23 @@ int _write(int file, char *ptr, int len)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
   if (htim ->Instance == TIM6) {
-    imu_tick++;
+
+    HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+    imu1_accel_status = HAL_SPI_TransmitReceive(&hspi2, motion_tx, motion_rx, 15, 100);
+    HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+
+    if (imu1_accel_status == HAL_OK) {  // accel_rx[0]	命令送信中の受信値
+
+      temperture = (int16_t)(((uint16_t)motion_rx[2] << 8 | motion_rx[1]));
+
+      imu1_gx = (int16_t)(((uint16_t)motion_rx[4] << 8) | motion_rx[3]);
+      imu1_gy = (int16_t)(((uint16_t)motion_rx[6] << 8) | motion_rx[5]);
+      imu1_gz = (int16_t)(((uint16_t)motion_rx[8] << 8) | motion_rx[7]);
+
+      imu1_ax = (int16_t)(((uint16_t)motion_rx[10]  << 8) | motion_rx[9]);
+      imu1_ay = (int16_t)(((uint16_t)motion_rx[12] << 8) | motion_rx[11]);
+      imu1_az = (int16_t)(((uint16_t)motion_rx[14] << 8) | motion_rx[13]);
+    }
   }
 
 }
@@ -144,6 +167,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_SPI2_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
@@ -230,7 +254,7 @@ int main(void)
   uint32_t last_imu_tick = 0;
   __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
 
-  if (HAL_TIM_Base_Start_IT(&htim6) != HAL_OK) {
+  if (HAL_TIM_Base_Start_IT(&htim6) != HAL_OK) {  //タイマースタート
     Error_Handler();
   }
 
@@ -245,32 +269,32 @@ int main(void)
     /* USER CODE BEGIN 3 */
     HAL_Delay(100);
 
-    uint32_t tick = imu_tick;
+    // uint32_t tick = imu_tick;
 
-    if (tick == last_imu_tick){  //タイマーから値が来たか確認　来ていたら値が増えるので !=であり、while内の動作が行われる
-      continue;
-    }
+    // if (tick == last_imu_tick){  //タイマーから値が来たか確認　来ていたら値が増えるので !=であり、while内の動作が行われる
+    //   continue;
+    // }
 
-    last_imu_tick = tick;
+    // last_imu_tick = tick;
 
-    uint8_t motion_tx[15] = {0x20 | 0x80};  //0x20は温度、0x22はジャイロセンサー、0x28は、加速度データが入っている最初のレジスタのアドレス 0x29とついていく
-    uint8_t motion_rx[15] = {0};
-    HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
-    imu1_accel_status = HAL_SPI_TransmitReceive(&hspi2, motion_tx, motion_rx, 15, 100);
-    HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+    // uint8_t motion_tx[15] = {0x20 | 0x80};  //0x20は温度、0x22はジャイロセンサー、0x28は、加速度データが入っている最初のレジスタのアドレス 0x29とついていく
+    // uint8_t motion_rx[15] = {0};
+    // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+    // imu1_accel_status = HAL_SPI_TransmitReceive(&hspi2, motion_tx, motion_rx, 15, 100);
+    // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
 
-    if (imu1_accel_status == HAL_OK) {  // accel_rx[0]	命令送信中の受信値
+    // if (imu1_accel_status == HAL_OK) {  // accel_rx[0]	命令送信中の受信値
 
-      temperture = (int16_t)(((uint16_t)motion_rx[2] << 8 | motion_rx[1]));
+    //   temperture = (int16_t)(((uint16_t)motion_rx[2] << 8 | motion_rx[1]));
 
-      imu1_gx = (int16_t)(((uint16_t)motion_rx[4] << 8) | motion_rx[3]);
-      imu1_gy = (int16_t)(((uint16_t)motion_rx[6] << 8) | motion_rx[5]);
-      imu1_gz = (int16_t)(((uint16_t)motion_rx[8] << 8) | motion_rx[7]);
+    //   imu1_gx = (int16_t)(((uint16_t)motion_rx[4] << 8) | motion_rx[3]);
+    //   imu1_gy = (int16_t)(((uint16_t)motion_rx[6] << 8) | motion_rx[5]);
+    //   imu1_gz = (int16_t)(((uint16_t)motion_rx[8] << 8) | motion_rx[7]);
 
-      imu1_ax = (int16_t)(((uint16_t)motion_rx[10]  << 8) | motion_rx[9]);
-      imu1_ay = (int16_t)(((uint16_t)motion_rx[12] << 8) | motion_rx[11]);
-      imu1_az = (int16_t)(((uint16_t)motion_rx[14] << 8) | motion_rx[13]);
-    }
+    //   imu1_ax = (int16_t)(((uint16_t)motion_rx[10]  << 8) | motion_rx[9]);
+    //   imu1_ay = (int16_t)(((uint16_t)motion_rx[12] << 8) | motion_rx[11]);
+    //   imu1_az = (int16_t)(((uint16_t)motion_rx[14] << 8) | motion_rx[13]);
+    // }
 
     printf("temperture = %d imu1_gx = %d imu1_gy = %d imu1_gz = %d imu1_ax = %d imu1_ay = %d imu1_az = %d\n",temperture, imu1_gx, imu1_gy, imu1_gz, imu1_ax, imu1_ay, imu1_az);
   }
@@ -591,6 +615,26 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMAMUX1_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
 
 }
 
