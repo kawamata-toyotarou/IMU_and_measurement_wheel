@@ -18,9 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32g474xx.h"
+#include "stm32g4xx_hal_def.h"
+#include "stm32g4xx_hal_gpio.h"
+#include "stm32g4xx_hal_tim.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdint.h>
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -44,6 +49,7 @@ SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim8;
 
 UART_HandleTypeDef huart2;
@@ -62,12 +68,20 @@ volatile uint8_t imu1_ctrl1 = 0;
 volatile HAL_StatusTypeDef imu1_write_status = HAL_ERROR;
 volatile HAL_StatusTypeDef imu1_read_status = HAL_ERROR;
 
-volatile int16_t imu1_ax = 0;
-volatile int16_t imu1_ay = 0;
-volatile int16_t imu1_az = 0;
-
 volatile HAL_StatusTypeDef imu1_accel_config_status = HAL_ERROR;
 volatile HAL_StatusTypeDef imu1_accel_status = HAL_ERROR;
+
+volatile uint32_t imu_tick = 0;
+
+volatile int16_t temperture = 0;
+
+volatile int16_t  imu1_ax = 0;
+volatile int16_t  imu1_ay = 0;
+volatile int16_t  imu1_az = 0;
+
+volatile int16_t imu1_gx = 0;
+volatile int16_t imu1_gy = 0;
+volatile int16_t imu1_gz = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,6 +92,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 int _write(int file, char *ptr, int len);
 /* USER CODE END PFP */
@@ -89,6 +104,14 @@ int _write(int file, char *ptr, int len)
   (void)file;
   HAL_UART_Transmit(&huart2, (uint8_t*)ptr, (uint16_t)len, HAL_MAX_DELAY);
   return len;
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+
+  if (htim ->Instance == TIM6) {
+    imu_tick++;
+  }
+
 }
 /* USER CODE END 0 */
 
@@ -126,72 +149,91 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM8_Init();
   MX_USART2_UART_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
-  printf("hello world\n");
-  HAL_Delay(100);                                                   // 起動順位
+  //printf("hello world\n");
+  HAL_Delay(100);                                             // 起動順位
 
-  uint8_t tx[2] = {0x0F | 0x80, 0x00};                              // 送信する2バイト 0x80で読み取りの意味 0x0Fを読み取る 0x0Fは、センサーの識別値が入った`WHO_AM_I`レジスタのアドレス ,は配列の値区切り
+  uint8_t tx[2] = {0x0F | 0x80, 0x00};                      // 送信する2バイト 0x80で読み取りの意味 0x0Fを読み取る 0x0Fは、センサーの識別値が入った`WHO_AM_I`レジスタのアドレス ,は配列の値区切り
   uint8_t rx[2] = {0};                                              // 受信する2バイト
 
+  // /*IMU1_CS_GPIO_Port	GPIOB	Bポート IMU1_CS_Pin	GPIO_PIN_12	12番ピン*/
+  // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);           // IMU1を選択する 
+  // imu1_spi_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);// SPI2で2バイトを送信し、同時に2バイトを受信する &hspi2はspi2を意味している(どのspiか, 送信, 受信, 8bit設定より2バイト, 完了を待つ時間ms)
+  // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);             // IMU1との通信を終了する
 
-  /*IMU1_CS_GPIO_Port	GPIOB	Bポート IMU1_CS_Pin	GPIO_PIN_12	12番ピン*/
-  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);// IMU1を選択する 
-  imu1_spi_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);// SPI2で2バイトを送信し、同時に2バイトを受信する &hspi2はspi2を意味している(どのspiか, 送信, 受信, 8bit設定より2バイト, 完了を待つ時間ms)
-  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);  // IMU1との通信を終了する
+  // // 通信処理が正常に終わった場合、識別値を保存する 
+  // if (imu1_spi_status == HAL_OK){
+  //   imu1_id = rx[1];
+  // }
 
-  // 通信処理が正常に終わった場合、識別値を保存する 
-  if (imu1_spi_status == HAL_OK){
-    imu1_id = rx[1];
-  }
+  // HAL_GPIO_WritePin(IMU2_CS_GPIO_Port, IMU2_CS_Pin, GPIO_PIN_RESET); 
+  // imu2_spi_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  // HAL_GPIO_WritePin(IMU2_CS_GPIO_Port, IMU2_CS_Pin, GPIO_PIN_SET); 
 
-  HAL_GPIO_WritePin(IMU2_CS_GPIO_Port, IMU2_CS_Pin, GPIO_PIN_RESET); 
-  imu2_spi_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
-  HAL_GPIO_WritePin(IMU2_CS_GPIO_Port, IMU2_CS_Pin, GPIO_PIN_SET); 
+  // if (imu2_spi_status == HAL_OK){
+  //   imu2_id = rx[1];
+  // }
 
-  if (imu2_spi_status == HAL_OK){
-    imu2_id = rx[1];
-  }
+  // HAL_GPIO_WritePin(IMU3_CS_GPIO_Port, IMU3_CS_Pin, GPIO_PIN_RESET); 
+  // imu3_spi_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  // HAL_GPIO_WritePin(IMU3_CS_GPIO_Port, IMU3_CS_Pin, GPIO_PIN_SET);
 
-  HAL_GPIO_WritePin(IMU3_CS_GPIO_Port, IMU3_CS_Pin, GPIO_PIN_RESET); 
-  imu3_spi_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
-  HAL_GPIO_WritePin(IMU3_CS_GPIO_Port, IMU3_CS_Pin, GPIO_PIN_SET);
+  // if (imu3_spi_status == HAL_OK){
+  //   imu3_id = rx[1];
+  // }
 
-  if (imu3_spi_status == HAL_OK){
-    imu3_id = rx[1];
-  }
+  // // CTRLへ設定を書き込む 0x06を書き込む120Hz 最上位bitが0なので0x10は書き込み命令で0x10レジスタに書き込む
+  // tx[0] = 0x10;
+  // tx[1] = 0x06;
 
-  // CTRLへ設定を書き込む 0x06を書き込む 最上位bitが0なので0x10は書き込み命令で0x10レジスタに書き込む
-  tx[0] = 0x10;
+  // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+  // imu1_write_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+
+  // // CTRL1を読み返す    0x10 | 0x80 = 0x90 0x00は返答を受け取るためのダミー 0x90は最上位bitが1なので読み取り命令 0x10を読み取る
+  // tx[0] = 0x10 | 0x80;
+  // tx[1] = 0x00;
+
+  // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+  // imu1_read_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+
+  // if (imu1_read_status == HAL_OK){
+  //   imu1_ctrl1 = rx[1];
+  // }
+
+  // tx[0] = 0x12;
+  // tx[1] = 0x44;  //BDUとIF_INCを有効にする設定
+
+  // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+  // imu1_accel_config_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+
+  // if (imu1_accel_config_status != HAL_OK) {
+  //   Error_Handler();
+  // }
+
+  tx[0] = 0x11;
   tx[1] = 0x06;
 
   HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
-  imu1_write_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  HAL_StatusTypeDef gyro_config_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
   HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
 
-  // CTRL1を読み返す    0x10 | 0x80 = 0x90 0x00は返答を受け取るためのダミー 0x90は最上位bitが1なので読み取り命令 0x10を読み取る
-  tx[0] = 0x10 | 0x80;
-  tx[1] = 0x00;
-
-  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
-  imu1_read_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
-  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
-
-  if (imu1_read_status == HAL_OK){
-    imu1_ctrl1 = rx[1];
-  }
-
-  tx[0] = 0x12;
-  tx[1] = 0x44;  //BDUとIF_INCを有効にする設定
-
-  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
-  imu1_accel_config_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
-  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
-
-  if (imu1_accel_config_status != HAL_OK) {
+  if (gyro_config_status != HAL_OK){
     Error_Handler();
   }
 
   HAL_Delay(100);
+
+  uint32_t last_imu_tick = 0;
+  __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
+
+  if (HAL_TIM_Base_Start_IT(&htim6) != HAL_OK) {
+    Error_Handler();
+  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -201,19 +243,36 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    uint8_t accel_tx[7] = {0x28 | 0x80, 0, 0,0,0,0,0};  // 0x28は、加速度データが入っている最初のレジスタのアドレス 0x29とついていく
-    uint8_t accel_rx[7] = {0};
+    HAL_Delay(100);
+
+    uint32_t tick = imu_tick;
+
+    if (tick == last_imu_tick){  //タイマーから値が来たか確認　来ていたら値が増えるので !=であり、while内の動作が行われる
+      continue;
+    }
+
+    last_imu_tick = tick;
+
+    uint8_t motion_tx[15] = {0x20 | 0x80};  //0x20は温度、0x22はジャイロセンサー、0x28は、加速度データが入っている最初のレジスタのアドレス 0x29とついていく
+    uint8_t motion_rx[15] = {0};
     HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
-    imu1_accel_status = HAL_SPI_TransmitReceive(&hspi2, accel_tx, accel_rx, 7, 100);
+    imu1_accel_status = HAL_SPI_TransmitReceive(&hspi2, motion_tx, motion_rx, 15, 100);
     HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
 
     if (imu1_accel_status == HAL_OK) {  // accel_rx[0]	命令送信中の受信値
-      imu1_ax = (int16_t)(((uint16_t)accel_rx[2] << 8) | accel_rx[1]);
-      imu1_ay = (int16_t)(((uint16_t)accel_rx[4] << 8) | accel_rx[3]);
-      imu1_az = (int16_t)(((uint16_t)accel_rx[6] << 8) | accel_rx[5]);
+
+      //temperture = (int16_t)(((uint16_t)motion_rx[2] << 8 |))
+
+      imu1_gx = (int16_t)(((uint16_t)motion_rx[4] << 8) | motion_rx[3]);
+      imu1_gy = (int16_t)(((uint16_t)motion_rx[6] << 8) | motion_rx[5]);
+      imu1_gz = (int16_t)(((uint16_t)motion_rx[8] << 8) | motion_rx[7]);
+
+      imu1_ax = (int16_t)(((uint16_t)motion_rx[10]  << 8) | motion_rx[9]);
+      imu1_ay = (int16_t)(((uint16_t)motion_rx[12] << 8) | motion_rx[11]);
+      imu1_az = (int16_t)(((uint16_t)motion_rx[14] << 8) | motion_rx[13]);
     }
 
-    HAL_Delay(100);
+    printf("imu1_gx = %d imu1_gy = %d imu1_gz = %d imu1_ax = %d imu1_ay = %d imu1_az = %d\n", imu1_gx, imu1_gy, imu1_gz, imu1_ax, imu1_ay, imu1_az);
   }
   /* USER CODE END 3 */
 }
@@ -395,6 +454,44 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 15999;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 99;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
 
 }
 

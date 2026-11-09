@@ -7,3 +7,4 @@ C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_it.c:144:6:SVC_Handl
 C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_it.c:157:6:DebugMon_Handler	4	static
 C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_it.c:170:6:PendSV_Handler	4	static
 C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_it.c:183:6:SysTick_Handler	8	static
+C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_it.c:204:6:TIM6_DAC_IRQHandler	8	static

@@ -1,10 +1,10 @@
 # ninja log v7
 224	3744	8159142766051531	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/sysmem.c.obj	7c92f6b7c3c52150
 346	4655	8159142767250562	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/syscalls.c.obj	3e5656843e8754d6
-87	4529	8159142764674493	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/stm32g4xx_it.c.obj	ca8256e5335c1101
+99	1392	8159190252496600	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/stm32g4xx_it.c.obj	ca8256e5335c1101
 418	5016	8159142768074915	CMakeFiles/IMU_and_measurement_wheel.dir/startup_stm32g474xx.s.obj	524bdf55278ea4d0
-158	4384	8159142765343041	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/stm32g4xx_hal_msp.c.obj	c47f74164a011336
-4	1867	8159146553304284	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/main.c.obj	efdd9b8f51bb5363
+189	1336	8159190253389487	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/stm32g4xx_hal_msp.c.obj	c47f74164a011336
+9	1263	8159190830284382	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/main.c.obj	efdd9b8f51bb5363
 512	4818	8159142768974247	cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Core/Src/system_stm32g4xx.c.obj	532b1ed01f0edb9a
 606	5661	8159142769891292	cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_spi.c.obj	15c1864b8f3e025b
 702	5252	8159142770936216	cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_spi_ex.c.obj	b73b8a879050a38a
@@ -23,10 +23,15 @@
 5016	9316	8159142813967978	cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_pwr_ex.c.obj	fdcc284244b43fe1
 5532	9987	8159142819192448	cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_tim_ex.c.obj	b4a08a7cfaf0d00c
 5362	9961	8159142817455000	cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_tim.c.obj	4bb31275e8d76b62
-1897	2520	8159146572099824	IMU_and_measurement_wheel.elf	b5e612bd3f77e6f0
+846	1333	8159156587731876	IMU_and_measurement_wheel.elf	b5e612bd3f77e6f0
 5661	9916	8159142820411267	cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart.c.obj	3be718c2e5323ed
 5766	9948	8159142821480013	cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart_ex.c.obj	e20ba20bdb4b1958
-7	1313	8159155577982217	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/main.c.obj	efdd9b8f51bb5363
-1339	2024	8159155591283464	IMU_and_measurement_wheel.elf	b5e612bd3f77e6f0
-4	823	8159156579235560	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/main.c.obj	efdd9b8f51bb5363
-846	1333	8159156587731876	IMU_and_measurement_wheel.elf	b5e612bd3f77e6f0
+44	1653	8159196086562524	build.ninja	8b3638a45b46410e
+44	1653	8159196086330666	C:/Users/kawam/IMU_and_measurement_wheel/build/Debug/cmake_install.cmake	8b3638a45b46410e
+44	1653	8159196086409288	C:/Users/kawam/IMU_and_measurement_wheel/build/Debug/cmake/stm32cubemx/cmake_install.cmake	8b3638a45b46410e
+5	983	8159196121363576	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/main.c.obj	efdd9b8f51bb5363
+1013	1572	8159196131365137	IMU_and_measurement_wheel.elf	b5e612bd3f77e6f0
+7	1120	8159213897737371	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/main.c.obj	efdd9b8f51bb5363
+1155	1930	8159213909252331	IMU_and_measurement_wheel.elf	b5e612bd3f77e6f0
+5	971	8159216093824011	CMakeFiles/IMU_and_measurement_wheel.dir/Core/Src/main.c.obj	efdd9b8f51bb5363
+999	1550	8159216103637421	IMU_and_measurement_wheel.elf	b5e612bd3f77e6f0

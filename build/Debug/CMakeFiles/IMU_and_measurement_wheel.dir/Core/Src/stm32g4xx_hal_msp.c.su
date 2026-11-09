@@ -2,6 +2,8 @@ C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:62:6:HAL_M
 C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:89:6:HAL_SPI_MspInit	48	static
 C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:127:6:HAL_SPI_MspDeInit	16	static
 C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:157:6:HAL_TIM_Encoder_MspInit	64	static
-C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:241:6:HAL_TIM_Encoder_MspDeInit	16	static
-C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:306:6:HAL_UART_MspInit	128	static
-C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:354:6:HAL_UART_MspDeInit	16	static
+C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:241:6:HAL_TIM_Base_MspInit	24	static
+C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:267:6:HAL_TIM_Encoder_MspDeInit	16	static
+C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:332:6:HAL_TIM_Base_MspDeInit	16	static
+C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:357:6:HAL_UART_MspInit	128	static
+C:/Users/kawam/IMU_and_measurement_wheel/Core/Src/stm32g4xx_hal_msp.c:405:6:HAL_UART_MspDeInit	16	static
