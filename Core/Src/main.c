@@ -18,6 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32g474xx.h"
+#include "stm32g4xx_hal_def.h"
+#include "stm32g4xx_hal_tim.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -53,6 +56,8 @@ TIM_HandleTypeDef htim8;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+
+/*計測輪用*/
 volatile uint8_t imu1_id = 0;                             // センサーから返ってきた識別値を保存する変数
 volatile HAL_StatusTypeDef imu1_spi_status = HAL_ERROR;   // SPIの送受信処理が正常に終わったか保存
 
@@ -94,6 +99,9 @@ volatile int16_t last_imu1_gz = 0;
 static volatile uint8_t imu1_dma_busy = 0;
 volatile uint32_t imu1_sample_count = 0;
 volatile uint32_t imu1_dma_errors = 0;
+
+/*計測輪*/
+volatile uint16_t enc1_count = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -121,9 +129,12 @@ int _write(int file, char *ptr, int len)
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+    
 
   if (htim ->Instance == TIM6) {
 
+    enc1_count = (uint16_t)__HAL_TIM_GET_COUNTER(&htim2);
+    
     HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
     imu1_accel_status = HAL_SPI_TransmitReceive(&hspi2, motion_tx, motion_rx, 15, 100);
     HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
@@ -274,9 +285,17 @@ int main(void)
     Error_Handler();
   }
 
+  /* TIM2初期化 */  
+  if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
+    Error_Handler();
+  }
+
+  __HAL_TIM_SET_COUNTER(&htim2, 1234);  // TIM2が現在数えている値を、手動で1234にセット
+
+  /* TIM6初期化 */
   HAL_Delay(100);
 
-  uint32_t last_imu_tick = 0;
+  //uint32_t last_imu_tick = 0;
   __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
 
   if (HAL_TIM_Base_Start_IT(&htim6) != HAL_OK) {  //タイマースタート
@@ -322,6 +341,7 @@ int main(void)
     // }
 
     printf("temperture = %d imu1_gx = %d imu1_gy = %d imu1_gz = %d imu1_ax = %d imu1_ay = %d imu1_az = %d\n",temperture, imu1_gx, imu1_gy, imu1_gz, imu1_ax, imu1_ay, imu1_az);
+    printf("enc1_count = %d\n", enc1_count);
   }
   /* USER CODE END 3 */
 }
