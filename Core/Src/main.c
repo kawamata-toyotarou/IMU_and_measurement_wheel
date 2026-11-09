@@ -102,6 +102,10 @@ volatile uint32_t imu1_dma_errors = 0;
 
 /*計測輪*/
 volatile uint16_t enc1_count = 0;
+
+static uint16_t enc1_previous = 0;
+volatile int32_t enc1_delta = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -130,11 +134,27 @@ int _write(int file, char *ptr, int len)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     
-
+  
   if (htim ->Instance == TIM6) {
 
-    enc1_count = (uint16_t)__HAL_TIM_GET_COUNTER(&htim2);
+    /* 計測輪 */
+    //enc1_count = (uint16_t)__HAL_TIM_GET_COUNTER(&htim2);
+    uint16_t current = (uint16_t)__HAL_TIM_GET_COUNTER(&htim2);  // TIM2の現在値をcurrentに
+    int32_t delta = (int32_t)current - enc1_previous;            // 前回値のと差を計算
+
+    /* カウンタが65535 ↔ 0の境界をまたいだときの補正*/
+    if (delta > 32767) {
+      delta -= 65536;
+    }
+    else if (delta < -32768) {
+      delta += 65536;
+    }
+
+    enc1_count = current;        // 現在のカウンタ値を記録
+    enc1_delta = delta;          // 今回の100 msで動いた量を記録
+    enc1_previous = current;     // 今回値を、次回の引き算の基準にする
     
+    /* ここからIMU */
     HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
     imu1_accel_status = HAL_SPI_TransmitReceive(&hspi2, motion_tx, motion_rx, 15, 100);
     HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
@@ -285,12 +305,17 @@ int main(void)
     Error_Handler();
   }
 
-  /* TIM2初期化 */  
-  if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
+  /* TIM2初期化 */ 
+
+  // if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
+  //   Error_Handler();
+  // }
+  //__HAL_TIM_SET_COUNTER(&htim2, 1234);  // TIM2が現在数えている値を、手動で1234にセット
+  if (HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL) != HAL_OK) {  // TIMxのエンコーダモードを開始
     Error_Handler();
   }
 
-  __HAL_TIM_SET_COUNTER(&htim2, 1234);  // TIM2が現在数えている値を、手動で1234にセット
+  enc1_previous = (uint16_t)__HAL_TIM_GET_COUNTER(&htim2);    // 初期の値を計測
 
   /* TIM6初期化 */
   HAL_Delay(100);
@@ -340,8 +365,9 @@ int main(void)
     //   imu1_az = (int16_t)(((uint16_t)motion_rx[14] << 8) | motion_rx[13]);
     // }
 
+    printf("enc1_count=%u enc1_delta=%ld\r\n", (unsigned int)enc1_count, (long)enc1_delta);
     printf("temperture = %d imu1_gx = %d imu1_gy = %d imu1_gz = %d imu1_ax = %d imu1_ay = %d imu1_az = %d\n",temperture, imu1_gx, imu1_gy, imu1_gz, imu1_ax, imu1_ay, imu1_az);
-    printf("enc1_count = %d\n", enc1_count);
+    //printf("enc1_count = %d\n", enc1_count);
   }
   /* USER CODE END 3 */
 }
