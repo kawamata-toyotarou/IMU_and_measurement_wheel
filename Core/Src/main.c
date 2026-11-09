@@ -261,7 +261,7 @@ int main(void)
 
     if (imu1_accel_status == HAL_OK) {  // accel_rx[0]	命令送信中の受信値
 
-      //temperture = (int16_t)(((uint16_t)motion_rx[2] << 8 |))
+      temperture = (int16_t)(((uint16_t)motion_rx[2] << 8 | motion_rx[1]));
 
       imu1_gx = (int16_t)(((uint16_t)motion_rx[4] << 8) | motion_rx[3]);
       imu1_gy = (int16_t)(((uint16_t)motion_rx[6] << 8) | motion_rx[5]);
@@ -272,7 +272,7 @@ int main(void)
       imu1_az = (int16_t)(((uint16_t)motion_rx[14] << 8) | motion_rx[13]);
     }
 
-    printf("imu1_gx = %d imu1_gy = %d imu1_gz = %d imu1_ax = %d imu1_ay = %d imu1_az = %d\n", imu1_gx, imu1_gy, imu1_gz, imu1_ax, imu1_ay, imu1_az);
+    printf("temperture = %d imu1_gx = %d imu1_gy = %d imu1_gz = %d imu1_ax = %d imu1_ay = %d imu1_az = %d\n",temperture, imu1_gx, imu1_gy, imu1_gz, imu1_ax, imu1_ay, imu1_az);
   }
   /* USER CODE END 3 */
 }
