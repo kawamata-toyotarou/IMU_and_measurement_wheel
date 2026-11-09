@@ -75,14 +75,21 @@ uint8_t motion_rx[15] = {0};
 volatile uint32_t imu_tick = 0;
 
 volatile int16_t temperture = 0;
+volatile int16_t last_temperture = 0;
 
 volatile int16_t  imu1_ax = 0;
 volatile int16_t  imu1_ay = 0;
 volatile int16_t  imu1_az = 0;
+volatile int16_t  last_imu1_ax = 0;
+volatile int16_t  last_imu1_ay = 0;
+volatile int16_t  last_imu1_az = 0;
 
 volatile int16_t imu1_gx = 0;
 volatile int16_t imu1_gy = 0;
 volatile int16_t imu1_gz = 0;
+volatile int16_t last_imu1_gx = 0;
+volatile int16_t last_imu1_gy = 0;
+volatile int16_t last_imu1_gz = 0;
 
 static volatile uint8_t imu1_dma_busy = 0;
 volatile uint32_t imu1_sample_count = 0;
@@ -132,6 +139,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
       imu1_ax = (int16_t)(((uint16_t)motion_rx[10]  << 8) | motion_rx[9]);
       imu1_ay = (int16_t)(((uint16_t)motion_rx[12] << 8) | motion_rx[11]);
       imu1_az = (int16_t)(((uint16_t)motion_rx[14] << 8) | motion_rx[13]);
+
+      /*　意味のある数字に変換している　filterもかけている*/
+      temperture = (int16_t)((temperture /256.0 + 25.0) * 0.3 + last_temperture * 0.7);;  //度数に変更
+      last_temperture = temperture;
+
+      imu1_gx = (int16_t)(imu1_gx * 4.375 / 1000.0) * 0.3 + last_imu1_gx * 0.7;           //°/s 
+      last_imu1_gx = imu1_gx; 
+      imu1_gy = (int16_t)(imu1_gy * 4.375 / 1000.0) * 0.3 + last_imu1_gy * 0.7;
+      last_imu1_gy = imu1_gy;
+      imu1_gz = (int16_t)(imu1_gz * 4.375 / 1000.0) * 0.3 + last_imu1_gz * 0.7;
+      last_imu1_gz = imu1_gz;
+
+      imu1_ax = (int16_t)(imu1_ax * 0.061 / 1000.0 * 9.80665) * 0.3 + last_imu1_ax * 0.7;  // m / s^2に変更
+      last_imu1_ax = imu1_ax; 
+      imu1_ay = (int16_t)(imu1_ay * 0.061 / 1000.0 * 9.80665) * 0.3 + last_imu1_ay * 0.7; 
+      last_imu1_ay = imu1_ay; 
+      imu1_az = (int16_t)(imu1_az * 0.061 / 1000.0 * 9.80665) * 0.3 + last_imu1_az * 0.7; 
+      last_imu1_az = imu1_az; 
     }
   }
 
