@@ -20,6 +20,8 @@
 #include "main.h"
 #include "stm32g474xx.h"
 #include "stm32g4xx_hal_def.h"
+#include "stm32g4xx_hal_gpio.h"
+#include "stm32g4xx_hal_spi.h"
 #include "stm32g4xx_hal_tim.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -96,7 +98,7 @@ volatile int16_t last_imu1_gx = 0;
 volatile int16_t last_imu1_gy = 0;
 volatile int16_t last_imu1_gz = 0;
 
-static volatile uint8_t imu1_dma_busy = 0;
+static volatile uint8_t imu1_dma_busy = 0;  // IMU1のDMA転送が進行中かどうかを覚える変数 0	空いている
 volatile uint32_t imu1_sample_count = 0;
 volatile uint32_t imu1_dma_errors = 0;
 
@@ -125,6 +127,60 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
+
+  if (hspi ->Instance != SPI2 || !imu1_dma_busy) {
+    return;
+  }
+
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+
+  if (imu1_accel_status == HAL_OK) {  // accel_rx[0]	命令送信中の受信値
+
+    temperture = (int16_t)(((uint16_t)motion_rx[2] << 8 | motion_rx[1]));
+
+    imu1_gx = (int16_t)(((uint16_t)motion_rx[4] << 8) | motion_rx[3]);
+    imu1_gy = (int16_t)(((uint16_t)motion_rx[6] << 8) | motion_rx[5]);
+    imu1_gz = (int16_t)(((uint16_t)motion_rx[8] << 8) | motion_rx[7]);
+
+    imu1_ax = (int16_t)(((uint16_t)motion_rx[10]  << 8) | motion_rx[9]);
+    imu1_ay = (int16_t)(((uint16_t)motion_rx[12] << 8) | motion_rx[11]);
+    imu1_az = (int16_t)(((uint16_t)motion_rx[14] << 8) | motion_rx[13]);
+
+    /*　意味のある数字に変換している　filterもかけている*/
+    temperture = (int16_t)((temperture /256.0 + 25.0) * 0.3 + last_temperture * 0.7);;  //度数に変更
+    last_temperture = temperture;
+
+    imu1_gx = (int16_t)(imu1_gx * 4.375 / 1000.0) * 0.3 + last_imu1_gx * 0.7;           //°/s 
+    last_imu1_gx = imu1_gx; 
+    imu1_gy = (int16_t)(imu1_gy * 4.375 / 1000.0) * 0.3 + last_imu1_gy * 0.7;
+    last_imu1_gy = imu1_gy;
+    imu1_gz = (int16_t)(imu1_gz * 4.375 / 1000.0) * 0.3 + last_imu1_gz * 0.7;
+    last_imu1_gz = imu1_gz;
+
+    imu1_ax = (int16_t)(imu1_ax * 0.061 / 1000.0 * 9.80665) * 0.3 + last_imu1_ax * 0.7;  // m / s^2に変更
+    last_imu1_ax = imu1_ax; 
+    imu1_ay = (int16_t)(imu1_ay * 0.061 / 1000.0 * 9.80665) * 0.3 + last_imu1_ay * 0.7; 
+    last_imu1_ay = imu1_ay; 
+    imu1_az = (int16_t)(imu1_az * 0.061 / 1000.0 * 9.80665) * 0.3 + last_imu1_az * 0.7; 
+    last_imu1_az = imu1_az; 
+
+    imu1_sample_count++;
+    imu1_dma_busy = 0;
+  }
+
+}
+
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
+
+  if (hspi -> Instance == SPI2 && imu1_dma_busy) {
+    HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin,  GPIO_PIN_RESET);
+    imu1_dma_errors++;
+    imu1_dma_busy = 0;
+  }
+
+}
+
 int _write(int file, char *ptr, int len)
 {
   (void)file;
@@ -155,39 +211,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     enc1_previous = current;     // 今回値を、次回の引き算の基準にする
     
     /* ここからIMU */
-    HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
-    imu1_accel_status = HAL_SPI_TransmitReceive(&hspi2, motion_tx, motion_rx, 15, 100);
-    HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+    if (!imu1_dma_busy) {
+      imu1_dma_busy = 1;
+      HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+      imu1_accel_status = HAL_SPI_TransmitReceive_DMA(&hspi2, motion_tx, motion_rx, sizeof(motion_tx));  // SPIの送信と受信をDMAで同時に始める関数ここで15バイトのデータ受信
+    }
 
-    if (imu1_accel_status == HAL_OK) {  // accel_rx[0]	命令送信中の受信値
-
-      temperture = (int16_t)(((uint16_t)motion_rx[2] << 8 | motion_rx[1]));
-
-      imu1_gx = (int16_t)(((uint16_t)motion_rx[4] << 8) | motion_rx[3]);
-      imu1_gy = (int16_t)(((uint16_t)motion_rx[6] << 8) | motion_rx[5]);
-      imu1_gz = (int16_t)(((uint16_t)motion_rx[8] << 8) | motion_rx[7]);
-
-      imu1_ax = (int16_t)(((uint16_t)motion_rx[10]  << 8) | motion_rx[9]);
-      imu1_ay = (int16_t)(((uint16_t)motion_rx[12] << 8) | motion_rx[11]);
-      imu1_az = (int16_t)(((uint16_t)motion_rx[14] << 8) | motion_rx[13]);
-
-      /*　意味のある数字に変換している　filterもかけている*/
-      temperture = (int16_t)((temperture /256.0 + 25.0) * 0.3 + last_temperture * 0.7);;  //度数に変更
-      last_temperture = temperture;
-
-      imu1_gx = (int16_t)(imu1_gx * 4.375 / 1000.0) * 0.3 + last_imu1_gx * 0.7;           //°/s 
-      last_imu1_gx = imu1_gx; 
-      imu1_gy = (int16_t)(imu1_gy * 4.375 / 1000.0) * 0.3 + last_imu1_gy * 0.7;
-      last_imu1_gy = imu1_gy;
-      imu1_gz = (int16_t)(imu1_gz * 4.375 / 1000.0) * 0.3 + last_imu1_gz * 0.7;
-      last_imu1_gz = imu1_gz;
-
-      imu1_ax = (int16_t)(imu1_ax * 0.061 / 1000.0 * 9.80665) * 0.3 + last_imu1_ax * 0.7;  // m / s^2に変更
-      last_imu1_ax = imu1_ax; 
-      imu1_ay = (int16_t)(imu1_ay * 0.061 / 1000.0 * 9.80665) * 0.3 + last_imu1_ay * 0.7; 
-      last_imu1_ay = imu1_ay; 
-      imu1_az = (int16_t)(imu1_az * 0.061 / 1000.0 * 9.80665) * 0.3 + last_imu1_az * 0.7; 
-      last_imu1_az = imu1_az; 
+    if (imu1_accel_status != HAL_OK){
+      HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+      imu1_dma_errors++;
+      imu1_dma_busy = 0;
     }
   }
 
@@ -263,13 +296,13 @@ int main(void)
   //   imu3_id = rx[1];
   // }
 
-  // // CTRLへ設定を書き込む 0x06を書き込む120Hz 最上位bitが0なので0x10は書き込み命令で0x10レジスタに書き込む
-  // tx[0] = 0x10;
-  // tx[1] = 0x06;
+  // CTRLへ設定を書き込む 0x06を書き込む120Hz 最上位bitが0なので0x10は書き込み命令で0x10レジスタに書き込む
+  tx[0] = 0x10;
+  tx[1] = 0x06;
 
-  // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
-  // imu1_write_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
-  // HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET);
+  imu1_write_status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 100);
+  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET);
 
   // // CTRL1を読み返す    0x10 | 0x80 = 0x90 0x00は返答を受け取るためのダミー 0x90は最上位bitが1なので読み取り命令 0x10を読み取る
   // tx[0] = 0x10 | 0x80;
